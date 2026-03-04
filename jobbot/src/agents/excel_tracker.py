@@ -1,6 +1,7 @@
-"""ExcelTracker agent: syncs SQLite events to Excel and generates summaries."""
+"""ExcelTracker agent: syncs SQLite events to Excel, Google Sheets, and generates summaries."""
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -92,6 +93,38 @@ def run_excel_tracker(
             summary["rows_inserted"] += 1
         else:
             summary["rows_updated"] += 1
+
+    # Sync to Google Sheets if configured
+    gsheet_enabled = os.environ.get("GOOGLE_SHEETS_ID", "")
+    if gsheet_enabled:
+        try:
+            from src.storage.gsheet import sync_all_to_gsheet
+            all_app_data = []
+            for app in all_apps:
+                job = get_job_by_dedup(conn, app["dedup_key"])
+                app_data = {
+                    "app_id": app["app_id"],
+                    "source": "YC",
+                    "company": app.get("company", ""),
+                    "role_title": app.get("role_title", ""),
+                    "role_family": app.get("role_family", ""),
+                    "job_url": app.get("job_url", ""),
+                    "location": app.get("location", ""),
+                    "match_score": app.get("match_score", 0),
+                    "resume_version": app.get("resume_version", ""),
+                    "status": app.get("status", "DISCOVERED"),
+                    "date_discovered": app.get("created_at", "")[:10] if app.get("created_at") else "",
+                    "date_submitted": app.get("updated_at", "")[:10] if app["status"] == "SUBMITTED" else "",
+                    "submission_proof": app.get("submission_proof", ""),
+                    "notes": "",
+                }
+                all_app_data.append(app_data)
+            gs_summary = sync_all_to_gsheet(all_app_data)
+            summary["gsheet_inserted"] = gs_summary.get("inserted", 0)
+            summary["gsheet_updated"] = gs_summary.get("updated", 0)
+            logger.info(f"Google Sheets sync complete: {gs_summary}")
+        except Exception as e:
+            logger.warning(f"Google Sheets sync failed (non-fatal): {e}")
 
     # Process events for logging
     latest_ts = last_ts
