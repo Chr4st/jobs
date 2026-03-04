@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+profile.yaml
+data/jobs.db
+data/applications.xlsx
+proofs/submitted/*
+proofs/needs_human/*
+!proofs/submitted/.gitkeep
+!proofs/needs_human/.gitkeep
+!data/.gitkeep
+.DS_Store

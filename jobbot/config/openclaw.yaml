@@ -1,0 +1,82 @@
+# OpenClaw agent configuration for Jobbot
+# This defines two agents: ScoutApplier and ExcelTracker
+#
+# OpenClaw is an experimental agent runtime. If it is not available
+# or too brittle, the fallback local orchestrator in src/main.py
+# runs both agents sequentially (which is the default behavior).
+
+runtime:
+  name: "jobbot"
+  version: "1.0.0"
+  llm:
+    provider: "ollama"
+    model: "mistral"
+    base_url: "http://localhost:11434"
+
+agents:
+  - name: "ScoutApplier"
+    description: >
+      Discovers new jobs from YC internship pages, extracts Greenhouse URLs,
+      parses job details, classifies into role families, scores matches, and
+      applies to qualifying positions via Playwright.
+    entry: "src.agents.scout_applier:run_scout_applier"
+    schedule: "every 30 minutes"
+    tools:
+      - name: "discover_jobs"
+        module: "src.yc.discover"
+        function: "discover_greenhouse_jobs"
+        permissions: ["network:read"]
+      - name: "parse_greenhouse"
+        module: "src.greenhouse.parse"
+        function: "parse_greenhouse_job"
+        permissions: ["network:read"]
+      - name: "apply_greenhouse"
+        module: "src.greenhouse.apply_playwright"
+        function: "apply_to_greenhouse"
+        permissions: ["network:read", "network:write", "filesystem:write"]
+      - name: "classify_role"
+        module: "src.utils.role_classify"
+        function: "classify_role"
+        permissions: []
+      - name: "compute_score"
+        module: "src.utils.scoring"
+        function: "compute_match_score"
+        permissions: []
+      - name: "db_upsert"
+        module: "src.storage.db"
+        function: "upsert_job"
+        permissions: ["filesystem:write"]
+    constraints:
+      - "Only process Greenhouse URLs"
+      - "Only apply to founding/fullstack/ml/quant roles"
+      - "Stop on CAPTCHA/OTP/login — mark NEEDS_HUMAN"
+      - "Never bypass security checks"
+
+  - name: "ExcelTracker"
+    description: >
+      Listens for new SQLite events and syncs application data to
+      data/applications.xlsx. Maintains status transitions and follow-up dates.
+    entry: "src.agents.excel_tracker:run_excel_tracker"
+    schedule: "after ScoutApplier"
+    tools:
+      - name: "read_events"
+        module: "src.storage.db"
+        function: "get_unprocessed_events"
+        permissions: ["filesystem:read"]
+      - name: "upsert_excel"
+        module: "src.storage.excel"
+        function: "upsert_application"
+        permissions: ["filesystem:write"]
+      - name: "daily_summary"
+        module: "src.storage.excel"
+        function: "get_daily_summary"
+        permissions: ["filesystem:read"]
+    constraints:
+      - "Read-only access to SQLite events"
+      - "Write access only to data/applications.xlsx"
+
+# Pipeline: ScoutApplier runs first, then ExcelTracker syncs results
+pipeline:
+  - agent: "ScoutApplier"
+  - agent: "ExcelTracker"
+    depends_on: "ScoutApplier"

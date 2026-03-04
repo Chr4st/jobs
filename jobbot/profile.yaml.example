@@ -1,0 +1,19 @@
+# Your personal information for job applications
+# Copy this to profile.yaml and fill in your details
+
+first_name: "Christ"
+last_name: "Xu"
+email: "chrxu@umich.edu"
+phone: "+1-734-356-1884"
+linkedin: "https://www.linkedin.com/in/christ-xu-687868298/"
+github: "https://github.com/Chr4st"
+portfolio: "#"
+location: "Ann Arbor, MI"
+
+# Optional: custom "why this role" snippets per role family
+# If not provided, a generic template is used
+why_snippets:
+  founding: "I thrive in early-stage environments where I can wear multiple hats and ship rapidly."
+  fullstack: "I enjoy building end-to-end features across the stack with a focus on user experience."
+  ml: "I'm passionate about applying ML/AI to real-world problems with production-grade systems."
+  quant: "I combine strong mathematical foundations with software engineering to build trading systems."

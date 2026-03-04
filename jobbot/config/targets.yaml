@@ -1,0 +1,82 @@
+# YC internship discovery sources
+# These are public pages listing YC companies with open roles
+yc_sources:
+  - url: "https://www.workatastartup.com/internships"
+    name: "Work at a Startup - Internships"
+  - url: "https://www.ycombinator.com/jobs/role/internship"
+    name: "YC Jobs - Internships"
+
+# Role families and their classification keywords
+role_families:
+  founding:
+    resume: "resumes/founding.pdf"
+    keywords:
+      - "founding engineer"
+      - "founding"
+      - "first engineer"
+      - "engineer #1"
+      - "early engineer"
+      - "generalist engineer"
+    title_patterns:
+      - "(?i)founding\\s+engineer"
+      - "(?i)first\\s+engineer"
+      - "(?i)engineer\\s*#?\\s*1"
+
+  fullstack:
+    resume: "resumes/fullstack.pdf"
+    keywords:
+      - "full stack"
+      - "full-stack"
+      - "fullstack"
+      - "frontend and backend"
+      - "web engineer"
+      - "software engineer"
+      - "swe"
+    title_patterns:
+      - "(?i)full[\\s-]?stack"
+      - "(?i)software\\s+engineer(?!.*(?:ml|ai|machine|data|quant))"
+      - "(?i)\\bswe\\b(?!.*(?:ml|ai|machine|data|quant))"
+
+  ml:
+    resume: "resumes/ml.pdf"
+    keywords:
+      - "machine learning"
+      - "ml engineer"
+      - "ai engineer"
+      - "deep learning"
+      - "nlp"
+      - "computer vision"
+      - "data scientist"
+      - "ai/ml"
+      - "ml/ai"
+    title_patterns:
+      - "(?i)(?:ml|ai|machine\\s+learning|deep\\s+learning)"
+      - "(?i)(?:data\\s+scientist|nlp|computer\\s+vision)"
+
+  quant:
+    resume: "resumes/quant.pdf"
+    keywords:
+      - "quantitative"
+      - "quant"
+      - "trading"
+      - "algorithmic trading"
+      - "systematic"
+      - "quantitative researcher"
+      - "quantitative developer"
+    title_patterns:
+      - "(?i)quant"
+      - "(?i)trading"
+      - "(?i)systematic"
+
+# Greenhouse domain patterns for URL filtering
+greenhouse_patterns:
+  - "boards.greenhouse.io"
+  - "jobs.greenhouse.io"
+  - "greenhouse.io/embed/job"
+
+# Match score weights (must sum to 1.0)
+scoring:
+  title_match_weight: 0.40
+  keyword_density_weight: 0.30
+  location_weight: 0.15
+  recency_weight: 0.15
