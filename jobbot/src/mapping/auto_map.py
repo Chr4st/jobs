@@ -38,6 +38,10 @@ _PROFILE_FIELD_MAP = {
     "graduation_date":     ["graduation_date", "expected_graduation"],
     "graduation_year":     ["graduation_year", "expected_graduation_year", "class_year",
                             "end_year_0", "graduation_year_0"],
+    "graduation_month":    ["graduation_month", "end_month_0", "end_month",
+                            "graduation_month_0"],
+    "education_start_month": ["start_month_0", "start_month", "education_start_month"],
+    "education_start_year":  ["start_year_0", "start_year", "education_start_year"],
     "gpa":                 ["gpa", "grade_point_average", "cumulative_gpa", "gpa_0"],
     "work_authorization":  ["work_authorization", "authorized_to_work", "work_auth"],
     "requires_sponsorship":["requires_sponsorship", "need_sponsorship", "visa_sponsorship"],
@@ -105,7 +109,8 @@ _HEURISTIC_ANSWERS = {
     "outstanding offers":          "No",
     "holding any offer":           "No",
     # Employment
-    "years of experience":         "2",
+    "years of experience":         "3",
+    "years of work experience":    "3",
     # Salary
     "salary":                      "Flexible",
     "compensation":                "Flexible",
@@ -114,12 +119,207 @@ _HEURISTIC_ANSWERS = {
     # Privacy / acknowledgments
     "acknowledge":                 "Yes",
     "privacy policy":              "Yes",
+    "privacy statement":           "Yes",
+    "privacy":                     "Yes",
     "agree to":                    "Yes",
     "consent":                     "Yes",
+    "i confirm":                   "Yes",
+    "by checking this box":        "Yes",
+    "by clicking":                 "Yes",
+    "please confirm":              "Yes",
+    "review our notice":           "Yes",
+    "notice at collection":        "Yes",
+    "candidate privacy":           "Yes",
+    "data privacy notice":         "Yes",
+    "arbitration agreement":       "Yes",
+    "responsible use policy":      "Yes",
+    "brighthire":                  "Yes",
+    "recorded and transcribed":    "Yes",
+    "i have read":                 "Yes",
+    "ai tools to assist":          "Yes",
     # Enrollment
     "currently enrolled":          "Yes",
     "enrolled in a university":    "Yes",
     "enrolled in university":      "Yes",
+    "enrollment status":           "Full-time",
+    # Age
+    "at least 18":                 "Yes",
+    "are you 18":                  "Yes",
+    "18 years of age":             "Yes",
+    "over 18":                     "Yes",
+    # Prior employment / company-specific
+    "previously applied":          "No",
+    "have you ever been employed by": "No",
+    "previously been employed":    "No",
+    "current or former":           "No",
+    "ever worked for":             "No",
+    "ever used any":               "No",
+    "have you previously":         "No",
+    "have you ever applied":       "No",
+    "applied to this role":        "No",
+    "have you applied":            "No",
+    "interviewed with":            "No",
+    "have you ever worked":        "No",
+    "outstanding offers":          "No",
+    "offers from other firms":     "No",
+    "holding any offer":           "No",
+    "offer deadlines":             "No",
+    "non-compete":                 "N/A",
+    "notice period":               "N/A",
+    "export license":              "No",
+    "any relatives":               "No",
+    "immediate family":            "No",
+    "familial relationship":       "No",
+    "government official":         "No",
+    "close relative of":           "No",
+    "ever been indicted":          "No",
+    "been declared bankrupt":      "No",
+    "been the subject":            "No",
+    "been debarred":               "No",
+    "entrusted with a position":   "No",
+    "been employed by tower":      "No",
+    "connections to individuals":  "No",
+    "conflicts of interest":      "No",
+    "professional or personal":   "No",
+    "engaged in the recruiting":  "No",
+    "subject to any agreements":  "No",
+    # Citizenship / export
+    "citizenship status":         "U.S. citizen",
+    "u.s. citizen":               "Yes",
+    "citizen or national":        "Yes",
+    "permanent resident":         "Yes",
+    "lawful permanent resident":  "Yes",
+    "export compliance":          "U.S. Person",
+    "itar":                       "Yes",
+    "u.s. government space":      "Yes",
+    "export regulat":             "Yes",
+    "security clearance":         "No",
+    "obtain and maintain":        "Yes",
+    # Internship timing
+    "eligible and available to accept": "Yes",
+    "available to accept a full": "Yes",
+    "available between":          "Yes",
+    "available to participate":   "Yes",
+    "available for 10 weeks":     "Yes",
+    "confirm availability":       "Yes",
+    "internship requires daily":  "Yes",
+    "undergrad level":            "Senior",
+    "year of your studies":       "4th year",
+    # Military
+    "served in the military":      "No",
+    "military service":            "No",
+    # Schedule / commitment / location
+    "full time internship":        "Yes",
+    "commit to a full time":       "Yes",
+    "able to commit":              "Yes",
+    "full time work schedule":     "Yes",
+    "available for a full-time":   "Yes",
+    "available to work full-time": "Yes",
+    "available for the full duration": "Yes",
+    "willing to work":             "Yes",
+    "willing to come":             "Yes",
+    "comfortable working":         "Yes",
+    "able to work onsite":         "Yes",
+    "able to work from":           "Yes",
+    "able to come into":           "Yes",
+    "currently residing":          "Yes",
+    "currently located":           "Yes",
+    "this role is based":          "Yes",
+    "this role is located":        "Yes",
+    "this position is hybrid":     "Yes",
+    "onsite at our":               "Yes",
+    "come into the office":        "Yes",
+    "days per week onsite":        "Yes",
+    "days onsite":                 "Yes",
+    "work from the office":        "Yes",
+    # Preferred name
+    "preferred first name":        None,  # resolved from profile first_name
+    "preferred name":              None,
+    # Languages
+    "fluent":                      "N/A",
+    "language":                    "English",
+    # Education level
+    "highest level of education":  "Bachelor's (in progress)",
+    "education level":             "Bachelor's (in progress)",
+    "what degree are you currently pursuing": "Bachelor's",
+    "type of degree":              "Bachelor's",
+    "degree program":              "Computer Science",
+    "currently a student":         "Yes",
+    "currently enrolled in an academic": "Computer Science",
+    "prior internship":            "Yes",
+    # Test scores
+    "sat score":                   "N/A",
+    "act score":                   "N/A",
+    "standardized test":           "N/A",
+    "best result on sat":          "N/A",
+    "best result on act":          "N/A",
+    # Work location
+    "intend to work":              "On-site",
+    "from where":                  "Ann Arbor, MI",
+    "where will you be working":   "Ann Arbor, MI",
+    "which state":                 "Michigan",
+    "state you currently reside":  "Michigan",
+    "preferred work location":     "New York",
+    "state of residence":          "Michigan",
+    "current state":               "Michigan",
+    # Pronouns
+    "pronouns":                    "He/Him",
+    "preferred pronouns":          "He/Him",
+    # Misc
+    "when can you start":          "June 2026",
+    "graduating in the summer":   "No",
+    "graduation date":            "May 2027",
+    "completing your degree":     "Spring 2027",
+    "expected graduation":        "May 2027",
+    "part of the stack":          "Full-stack",
+    "area of interest":           "Software Engineering",
+    "how many prior internship":  "2",
+    "how many years":             "2",
+    "years of relevant":          "2",
+    "employment history":         "N/A",
+    "previous employer":          "N/A",
+    # Internship start/availability
+    "select the month you will be able to start": "June",
+    "when are you able to join":  "June 2026",
+    "plan on ending":             "August 2026",
+    "able to start your internship": "June 2026",
+    "preferred internship location": "Any",
+    "preferred location":          "Any",
+    # Company-specific common patterns
+    "perform all of the essential functions": "Yes",
+    "reasonable accommodation":   "No",
+    "do you hold a role":         "No",
+    "close relative currently hold": "No",
+    "coffee chat":                "No",
+    "conference":                 "No",
+    "handshake":                  "No",
+    "student organization":       "No",
+    "word of mouth":              "No",
+    "information session":        "No",
+    "experience in manufacturing": "No",
+    "co-op requirement":          "No",
+    "chosen name":                None,  # resolved from profile first_name
+    "preferred last name":        None,  # resolved from profile last_name
+    "opt-in":                      "Yes",
+    "text message":                "Yes",
+    "whatsapp":                    "Yes",
+    "referred by":                 "No",
+    "referral from":               "No",
+    # Sponsorship variations
+    "require employer sponsorship": "No",
+    "require a new h-1b":          "No",
+    "h-1b sponsorship":            "No",
+    "require sponsorship":         "No",
+    # Product usage / misc
+    "have you used":               "Yes",
+    "are you familiar with":       "Yes",
+    "currently interviewing":      "No",
+    "current employee":            "No",
+    "state/province":              "Michigan",
+    "intern season":               "Summer 2026",
+    "interested in full-time":     "Yes",
+    "desired hourly rate":         "Flexible",
+    "desired pay":                 "Flexible",
 }
 
 # Pattern → profile key for heuristic-label-based profile lookups
@@ -135,10 +335,27 @@ _LABEL_TO_PROFILE = {
     "field of study":       "major",
     "graduation":           "graduation_year",
     "class year":           "graduation_year",
+    "when do you graduate": "graduation_date",
+    "expected graduation":  "graduation_date",
     "linkedin":             "linkedin",
     "github":               "github",
     "location":             "location",
     "city":                 "location",
+    "preferred first name": "first_name",
+    "preferred name":       "first_name",
+    "full legal name":      "first_name",
+    "current or previous employer": "university",
+    "current employer":     "university",
+    "previous employer":    "university",
+    "cover letter":         None,  # handled specially below
+    "end date month":       "graduation_month",
+    "end date year":        "graduation_year",
+    "start date month":     "education_start_month",
+    "start date year":      "education_start_year",
+    "anticipated graduation year": "graduation_year",
+    "anticipated graduation month": "graduation_month",
+    "chosen name":          "first_name",
+    "preferred last name":  "last_name",
 }
 
 _UNKNOWN_RE = re.compile(r"^unknown_\d+$")
@@ -173,9 +390,26 @@ def resolve_all_fields(
         required = bool(field.get("required", False))
 
         # Skip file inputs — resume is uploaded separately
-        if ftype == "file":
+        # Also skip resume_text textarea — Greenhouse auto-fills this from uploaded resume
+        if ftype == "file" or fk == "resume_text" or (
+            fk == "resume" and ftype in ("textarea", "text")
+        ):
             results.append({"field_key": fk, "label": label, "value": None,
                              "source": "file_upload", "required": required})
+            continue
+
+        # Cover letter text — fill with why_snippet based on role family
+        if fk == "cover_letter_text" or (
+            fk == "cover_letter" and ftype in ("textarea", "text")
+        ):
+            snippets = profile.get("why_snippets", {})
+            snippet = snippets.get(role_family) or snippets.get("fullstack", "")
+            if snippet:
+                results.append({"field_key": fk, "label": label, "value": snippet.strip(),
+                                 "source": "profile", "required": required})
+            else:
+                results.append({"field_key": fk, "label": label, "value": None,
+                                 "source": "file_upload", "required": required})
             continue
 
         # 1. DB mapping hierarchy
@@ -191,11 +425,14 @@ def resolve_all_fields(
             continue
 
         # 2. Profile.yaml direct / prefix match
-        profile_val = _match_profile(fk, label, profile)
-        if profile_val is not None:
-            results.append({"field_key": fk, "label": label, "value": profile_val,
-                             "source": "profile", "required": required})
-            continue
+        #    Skip checkboxes — profile keys like "github" or "linkedin" return URLs,
+        #    but checkbox fields with those labels expect "Yes"/"No".
+        if ftype != "checkbox":
+            profile_val = _match_profile(fk, label, profile)
+            if profile_val is not None:
+                results.append({"field_key": fk, "label": label, "value": profile_val,
+                                 "source": "profile", "required": required})
+                continue
 
         # 3. Heuristic answer from label (also try profile for label-based lookups)
         h_val = _match_heuristic(label, profile)
@@ -273,11 +510,12 @@ def get_missing_required(resolved: list[dict]) -> list[dict]:
     resolved_cb_bases: set[str] = set()
     for r in resolved:
         if r.get("source") == "checkbox_group" and r.get("value"):
+            # Always add the full key as a base (handles Greenhouse question IDs
+            # like question_15049233008 where _\d+ matches the ID, not a suffix)
+            resolved_cb_bases.add(r["field_key"])
             m = _CB_GROUP_RE.match(r["field_key"])
             if m:
                 resolved_cb_bases.add(m.group(1))
-            else:
-                resolved_cb_bases.add(r["field_key"])
 
     missing = []
     for r in resolved:
@@ -312,22 +550,27 @@ def _resolve_checkbox_groups(fields: list[dict], results: list[dict]) -> list[di
     appropriate one and mark the whole group as resolved.
     """
     # Find groups: fields sharing the same base key (question_X, question_X_1, ...)
+    # Use a two-pass approach to handle Greenhouse IDs correctly:
+    # Pass 1: collect all checkbox field keys
+    # Pass 2: for keys matching base_N, check if "base" exists as a field key
     _CB_SUFFIX_RE = re.compile(r"^(.+)_(\d+)$")
-    base_to_indices: dict[str, list[int]] = {}
+    cb_field_keys: set[str] = set()
+    cb_field_indices: list[tuple[int, str]] = []
     for i, f in enumerate(fields):
         if f.get("field_type") != "checkbox":
             continue
         fk = f["field_key"]
-        m = _CB_SUFFIX_RE.match(fk)
-        base = m.group(1) if m else fk
-        base_to_indices.setdefault(base, []).append(i)
+        cb_field_keys.add(fk)
+        cb_field_indices.append((i, fk))
 
-    # Also check if the base itself is a checkbox
-    for i, f in enumerate(fields):
-        if f.get("field_type") != "checkbox":
-            continue
-        fk = f["field_key"]
-        if not _CB_SUFFIX_RE.match(fk):
+    base_to_indices: dict[str, list[int]] = {}
+    for i, fk in cb_field_indices:
+        m = _CB_SUFFIX_RE.match(fk)
+        if m and m.group(1) in cb_field_keys:
+            # This is a suffixed field (e.g. question_X_1) whose base question_X exists
+            base_to_indices.setdefault(m.group(1), []).append(i)
+        else:
+            # This is either a base field or a standalone checkbox
             base_to_indices.setdefault(fk, []).append(i)
 
     # Referral keywords we want to select
@@ -465,7 +708,8 @@ def _inherit_from_context(
                 return p
             # If preceding field was answered by LLM, inherit that answer
             # (unknown_* is a paired input for the same question)
-            if results[j].get("source") in ("llm", "heuristic"):
+            if results[j].get("source") in ("llm", "heuristic", "profile",
+                                              "heuristic_option", "heuristic_ctx"):
                 return results[j]["value"]
             break  # only look one level back
 
