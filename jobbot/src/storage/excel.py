@@ -1,5 +1,6 @@
 """Excel tracker using openpyxl — upsert rows and maintain status transitions."""
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -11,8 +12,9 @@ EXCEL_PATH = Path(__file__).resolve().parents[2] / "data" / "applications.xlsx"
 
 COLUMNS = [
     "app_id", "source", "company", "role_title", "role_family", "job_url",
-    "location", "match_score", "resume_version", "status", "date_discovered",
-    "date_submitted", "submission_proof", "next_action_due", "notes"
+    "location", "match_score", "resume_version", "status", "policy",
+    "completeness_pct", "missing_fields_count", "date_discovered",
+    "date_submitted", "submission_proof", "proof_path", "next_action_due", "notes"
 ]
 
 HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -20,8 +22,13 @@ HEADER_FONT = Font(color="FFFFFF", bold=True, size=11)
 
 STATUS_COLORS = {
     "DISCOVERED": "E2EFDA",
+    "MAPPABLE": "DDEBF7",
+    "FILLING": "FFF2CC",
+    "FILLED_AWAITING_SUBMIT": "FFEB9C",
+    "NEEDS_USER_DATA": "FCE4D6",
     "READY_TO_APPLY": "BDD7EE",
     "APPLYING": "FFF2CC",
+    "APPLIED": "C6EFCE",
     "SUBMITTED": "C6EFCE",
     "NEEDS_HUMAN": "FFC7CE",
     "REJECTED": "D9D9D9",
@@ -68,8 +75,8 @@ def _ensure_workbook(path: Optional[Path] = None) -> tuple[Workbook, Path]:
         # Set reasonable column widths
         widths = {
             "A": 14, "B": 10, "C": 20, "D": 30, "E": 14, "F": 45,
-            "G": 18, "H": 12, "I": 16, "J": 16, "K": 14, "L": 14,
-            "M": 40, "N": 14, "O": 30
+            "G": 18, "H": 12, "I": 16, "J": 16, "K": 18, "L": 16,
+            "M": 20, "N": 14, "O": 14, "P": 40, "Q": 40, "R": 14, "S": 30,
         }
         for col_letter, width in widths.items():
             ws.column_dimensions[col_letter].width = width
@@ -124,6 +131,27 @@ def upsert_application(app_data: dict, path: Optional[Path] = None) -> str:
             datetime.now(timezone.utc), 2
         ).strftime("%Y-%m-%d")
 
+    # Compute completeness from missing_fields if present
+    missing_fields_raw = app_data.get("missing_fields", "")
+    if missing_fields_raw:
+        try:
+            missing_list = json.loads(missing_fields_raw) if isinstance(missing_fields_raw, str) else missing_fields_raw
+        except (ValueError, TypeError):
+            missing_list = []
+    else:
+        missing_list = []
+    missing_count = len(missing_list)
+
+    # proof_path from proof_json
+    proof_path = ""
+    proof_json_raw = app_data.get("proof_json", "")
+    if proof_json_raw:
+        try:
+            pj = json.loads(proof_json_raw) if isinstance(proof_json_raw, str) else proof_json_raw
+            proof_path = pj.get("proof_path", "") if isinstance(pj, dict) else ""
+        except (ValueError, TypeError):
+            pass
+
     row_data = {
         "app_id": app_id,
         "source": app_data.get("source", "YC"),
@@ -135,10 +163,14 @@ def upsert_application(app_data: dict, path: Optional[Path] = None) -> str:
         "match_score": app_data.get("match_score", 0),
         "resume_version": app_data.get("resume_version", ""),
         "status": status,
+        "policy": app_data.get("policy", "pause_at_submit"),
+        "completeness_pct": "" if missing_count == 0 else f"{max(0, 100 - missing_count * 10)}%",
+        "missing_fields_count": missing_count if missing_count else "",
         "date_discovered": app_data.get("date_discovered",
                                         datetime.now(timezone.utc).strftime("%Y-%m-%d")),
         "date_submitted": app_data.get("date_submitted", ""),
         "submission_proof": app_data.get("submission_proof", ""),
+        "proof_path": proof_path,
         "next_action_due": next_action,
         "notes": app_data.get("notes", ""),
     }
@@ -175,6 +207,35 @@ def validate_transition(current_status: str, new_status: str) -> bool:
     """Check if a status transition is valid."""
     allowed = VALID_TRANSITIONS.get(current_status, [])
     return new_status in allowed
+
+
+def rebuild_excel(db_path=None, output_path: Optional[Path] = None) -> int:
+    """Drop and rebuild applications.xlsx from the DB. Returns row count written."""
+    from src.storage.db import get_all_applications_with_jobs, get_connection
+
+    out = output_path or EXCEL_PATH
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # Delete existing file so _ensure_workbook creates fresh
+    if out.exists():
+        out.unlink()
+
+    conn = get_connection(db_path)
+    apps = get_all_applications_with_jobs(conn)
+    conn.close()
+
+    count = 0
+    for app in apps:
+        # Normalize date fields
+        created_at = app.get("created_at", "")
+        app_data = {
+            **app,
+            "date_discovered": created_at[:10] if created_at else "",
+            "date_submitted": (app.get("applied_at") or "")[:10],
+        }
+        upsert_application(app_data, path=out)
+        count += 1
+
+    return count
 
 
 def get_daily_summary(path: Optional[Path] = None) -> dict:
