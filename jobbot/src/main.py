@@ -36,6 +36,8 @@ from src.utils.logging import setup_logging
 
 logger = setup_logging("jobbot.main")
 
+PID_FILE = PROJECT_ROOT / "data" / ".jarvis.pid"
+
 
 @click.group()
 def cli():
@@ -87,19 +89,23 @@ def ngmi():
 
     If no daemon is running this is a no-op.
     """
-    import subprocess
-
     click.echo("🛑 jarvis ngmi — shutting down")
-    # Find running daemon by process name
+
+    if not PID_FILE.exists():
+        click.echo("  No PID file found — daemon not running.")
+        return
+
     try:
-        result = subprocess.run(
-            ["pkill", "-f", "src.main gmi.*--daemon"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            click.echo("  Daemon process terminated.")
-        else:
-            click.echo("  No running daemon found.")
+        pid = int(PID_FILE.read_text().strip())
+        os.kill(pid, signal.SIGTERM)
+        click.echo(f"  Sent SIGTERM to daemon (PID {pid}).")
+        PID_FILE.unlink(missing_ok=True)
+    except ProcessLookupError:
+        click.echo(f"  Stale PID file (process gone). Cleaning up.")
+        PID_FILE.unlink(missing_ok=True)
+    except ValueError:
+        click.echo("  Corrupt PID file. Removing.")
+        PID_FILE.unlink(missing_ok=True)
     except Exception as e:
         click.echo(f"  Could not stop daemon: {e}")
 
@@ -127,6 +133,10 @@ def _run_daemon_loop(*, max_jobs: int, dry_run: bool, policy: str,
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    # Write PID file for ngmi to find
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PID_FILE.write_text(str(os.getpid()))
+
     cycle = 0
     while running:
         cycle += 1
@@ -146,6 +156,8 @@ def _run_daemon_loop(*, max_jobs: int, dry_run: bool, policy: str,
                     break
                 time.sleep(1)
 
+    # Clean up PID file
+    PID_FILE.unlink(missing_ok=True)
     click.echo("Daemon stopped. ngmi achieved. ✌️")
 
 
@@ -154,7 +166,8 @@ def _print_gmi_summary(summary: dict):
     click.echo(f"  New jobs:        {summary['new_jobs']}")
     click.echo(f"  Filled (wait):   {summary.get('filled_awaiting', 0)}")
     click.echo(f"  Applied:         {summary['applied']}")
-    click.echo(f"  Needs user data: {summary['needs_user_data']}")
+    click.echo(f"  Skipped (unans): {summary.get('skipped_unanswerable', 0)}")
+    click.echo(f"  Needs user data: {summary.get('needs_user_data', 0)}")
     click.echo(f"  Needs human:     {summary['needs_human']}")
     click.echo(f"  Errors:          {summary['errors']}")
     if summary.get("details"):
