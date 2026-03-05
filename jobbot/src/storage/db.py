@@ -16,6 +16,7 @@ PIPELINE_STAGES = [
     "DISCOVERED",
     "MAPPABLE",
     "NEEDS_USER_DATA",
+    "SKIPPED_UNANSWERABLE",
     "FILLING",
     "FILLED_AWAITING_SUBMIT",
     "APPLYING",
@@ -133,6 +134,8 @@ MIGRATIONS = [
     "ALTER TABLE field_mappings ADD COLUMN scope_type TEXT",
     # Copy existing scope → scope_type for backward compat
     "UPDATE field_mappings SET scope_type = scope WHERE scope_type IS NULL",
+    # No-approval mode: track reason for auto-skips
+    "ALTER TABLE applications ADD COLUMN skip_reason TEXT",
 ]
 
 
@@ -230,6 +233,8 @@ def update_application_status(conn: sqlite3.Connection, app_id: str,
         updates["missing_fields"] = json.dumps(mf) if isinstance(mf, list) else mf
     if "policy" in extra:
         updates["policy"] = extra["policy"]
+    if "skip_reason" in extra:
+        updates["skip_reason"] = extra["skip_reason"]
 
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [app_id]
