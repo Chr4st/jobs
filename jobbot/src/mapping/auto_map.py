@@ -260,6 +260,10 @@ def resolve_all_fields(
 def get_missing_required(resolved: list[dict]) -> list[dict]:
     """Return resolved entries where value is None and the field is required.
 
+    Each returned entry includes a 'reason' string describing why the field
+    could not be resolved (e.g. "No profile key, heuristic, or LLM match for
+    'Why do you want to work here?'").
+
     Checkbox group members are excluded if at least one member in the group
     has been resolved (group-level required means at least one must be checked).
     """
@@ -285,6 +289,17 @@ def get_missing_required(resolved: list[dict]) -> list[dict]:
         base = m.group(1) if m else fk
         if base in resolved_cb_bases or fk in resolved_cb_bases:
             continue
+
+        # Build a descriptive reason for the miss
+        label = r.get("label", fk)
+        source = r.get("source", "unmapped")
+        if source == "needs_review":
+            reason = f"LLM uncertain for '{label}' — needs human review"
+        elif source == "unmapped":
+            reason = f"No profile key, heuristic, or LLM match for '{label}'"
+        else:
+            reason = f"Unresolved required field '{label}' (source={source})"
+        r["reason"] = reason
         missing.append(r)
     return missing
 
