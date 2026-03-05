@@ -23,10 +23,14 @@ ROLE_PATTERNS = {
             re.compile(r"quant", re.IGNORECASE),
             re.compile(r"trading", re.IGNORECASE),
             re.compile(r"systematic", re.IGNORECASE),
+            re.compile(r"quantitative\s+researcher", re.IGNORECASE),
+            re.compile(r"quantitative\s+developer", re.IGNORECASE),
         ],
         "desc_keywords": [
             "quantitative", "trading", "algorithmic", "systematic",
             "alpha", "backtesting", "market making", "signal",
+            "derivatives", "options", "futures", "stochastic",
+            "probability theory", "statistics",
         ],
     },
     "ml": {
@@ -34,11 +38,14 @@ ROLE_PATTERNS = {
             re.compile(r"(?:ml|ai|machine\s+learning|deep\s+learning)", re.IGNORECASE),
             re.compile(r"data\s+scientist", re.IGNORECASE),
             re.compile(r"(?:nlp|computer\s+vision|cv)\s+engineer", re.IGNORECASE),
+            re.compile(r"ai\s+researcher", re.IGNORECASE),
+            re.compile(r"research\s+(?:scientist|engineer)", re.IGNORECASE),
         ],
         "desc_keywords": [
             "machine learning", "deep learning", "neural network", "pytorch",
             "tensorflow", "nlp", "computer vision", "llm", "transformer",
             "model training", "ml infrastructure", "ai/ml", "ml/ai",
+            "reinforcement learning", "generative ai", "diffusion",
         ],
     },
     "fullstack": {
@@ -114,12 +121,27 @@ def classify_role(title: str, description: str = "") -> Optional[str]:
     return None
 
 
-def get_resume_path(role_family: str) -> str:
-    """Get the resume filename for a role family."""
-    mapping = {
-        "founding": "resumes/founding.pdf",
-        "fullstack": "resumes/fullstack.pdf",
-        "ml": "resumes/ml.pdf",
-        "quant": "resumes/quant.pdf",
-    }
-    return mapping.get(role_family, "resumes/fullstack.pdf")
+def get_resume_path(role_family: str = "fullstack") -> str:
+    """Get the resume path.
+
+    Uses a single resume for all role families.  If only one PDF exists in
+    the resumes/ directory it is returned regardless of *role_family*.
+    Falls back to the legacy per-family mapping when multiple PDFs exist.
+    """
+    from pathlib import Path
+
+    resumes_dir = Path(__file__).resolve().parents[2] / "resumes"
+    if resumes_dir.is_dir():
+        pdfs = list(resumes_dir.glob("*.pdf"))
+        if len(pdfs) == 1:
+            return str(pdfs[0].relative_to(resumes_dir.parent))
+        # Multiple PDFs → legacy per-family mapping
+        family_path = resumes_dir / f"{role_family}.pdf"
+        if family_path.exists():
+            return f"resumes/{role_family}.pdf"
+        # Still return the first PDF found as fallback
+        if pdfs:
+            return str(pdfs[0].relative_to(resumes_dir.parent))
+
+    # Absolute fallback
+    return "resumes/fullstack.pdf"
