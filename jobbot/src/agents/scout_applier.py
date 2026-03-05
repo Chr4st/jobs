@@ -306,9 +306,17 @@ def run_greenhouse_direct(
             except Exception:
                 pass
 
+    # Read automation config from profile
+    auto_cfg = profile.get("automation", {})
+    no_approval = auto_cfg.get("no_approval", False)
+    daily_cap = auto_cfg.get("max_applications_per_day", 0)
+    min_wait = auto_cfg.get("min_minutes_between_applications", 5)
+    max_wait = auto_cfg.get("max_minutes_between_applications", 10)
+
     summary = {
         "discovered": 0, "new_jobs": 0, "classified": 0,
         "applied": 0, "needs_human": 0, "needs_user_data": 0,
+        "skipped_unanswerable": 0,
         "errors": 0, "details": [],
     }
 
@@ -334,6 +342,12 @@ def run_greenhouse_direct(
         if _engine_stop_event and not _engine_stop_event.is_set():
             logger.info("Engine stopped by user")
             _emit({"type": "engine", "status": "stopped_by_user"})
+            break
+
+        # Daily cap enforcement
+        if daily_cap > 0 and apply_count >= daily_cap:
+            logger.info(f"Daily cap reached ({daily_cap} applications). Stopping.")
+            _emit({"type": "engine", "status": "daily_cap_reached", "count": apply_count})
             break
 
         app_id = app["app_id"]
@@ -376,21 +390,44 @@ def run_greenhouse_direct(
                 missing_required = get_missing_required(resolved)
 
                 if missing_required:
-                    # Mark as NEEDS_USER_DATA — required fields with no answer
                     missing_keys = [m["field_key"] for m in missing_required]
-                    logger.warning(f"  {len(missing_required)} missing required fields: {missing_keys[:5]}")
-                    update_application_stage(conn, app_id, "NEEDS_USER_DATA",
-                                             notes=f"Missing required: {', '.join(missing_keys[:10])}")
-                    update_application_status(conn, app_id, "NEEDS_USER_DATA", {
-                        "missing_fields": missing_keys,
-                        "policy": policy,
-                    })
-                    summary["needs_user_data"] += 1
-                    detail["status"] = "NEEDS_USER_DATA"
-                    summary["details"].append(detail)
-                    _emit({"type": "needs_data", "company": company, "title": title,
-                            "app_id": app_id, "missing": missing_keys[:5]})
-                    continue
+                    # Use descriptive reasons from get_missing_required
+                    reasons = [m.get("reason", m.get("label", m["field_key"])[:60])
+                               for m in missing_required]
+                    skip_reason = (
+                        f"Missing {len(missing_required)} required field(s): "
+                        + "; ".join(reasons[:5])
+                    )
+                    logger.warning(f"  {skip_reason}")
+
+                    if no_approval:
+                        # No-approval mode: auto-skip unresolvable jobs
+                        update_application_stage(conn, app_id, "SKIPPED_UNANSWERABLE",
+                                                 notes=skip_reason)
+                        update_application_status(conn, app_id, "SKIPPED_UNANSWERABLE", {
+                            "missing_fields": missing_keys,
+                            "skip_reason": skip_reason,
+                        })
+                        summary["skipped_unanswerable"] += 1
+                        detail["status"] = "SKIPPED_UNANSWERABLE"
+                        summary["details"].append(detail)
+                        _emit({"type": "skipped", "company": company, "title": title,
+                                "app_id": app_id, "reason": skip_reason})
+                        continue
+                    else:
+                        # Legacy approval mode: pause for user data
+                        update_application_stage(conn, app_id, "NEEDS_USER_DATA",
+                                                 notes=skip_reason)
+                        update_application_status(conn, app_id, "NEEDS_USER_DATA", {
+                            "missing_fields": missing_keys,
+                            "policy": policy,
+                        })
+                        summary["needs_user_data"] += 1
+                        detail["status"] = "NEEDS_USER_DATA"
+                        summary["details"].append(detail)
+                        _emit({"type": "needs_data", "company": company, "title": title,
+                                "app_id": app_id, "missing": missing_keys[:5]})
+                        continue
 
                 # All required fields resolved → MAPPABLE
                 update_application_stage(conn, app_id, "MAPPABLE")
@@ -457,9 +494,9 @@ def run_greenhouse_direct(
                 logger.error(f"  ✗ Error: {result['error']}")
                 _emit({"type": "error", "company": company, "title": title, "error": result["error"]})
 
-            # Rate limiting: wait 5-10 minutes between applications
+            # Rate limiting: configurable wait between applications
             if apply_count > 0 and apply_count < len(discovered_apps):
-                jitter = random.uniform(300, 600)  # 5-10 min
+                jitter = random.uniform(min_wait * 60, max_wait * 60)
                 logger.info(f"  💤 Rate limit: waiting {jitter:.0f}s before next application")
                 _emit({"type": "engine", "status": "rate_limit", "wait_seconds": int(jitter)})
                 # Sleep in small increments so we can check for stop signal
