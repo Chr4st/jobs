@@ -1,0 +1,117 @@
+# Greenhouse company boards — curated for Christ Xu's profile:
+#   USAMO/Putnam/IMO → top quant shops
+#   Cambridge ML publication + YC Fellow → AI/research companies
+#   Tencent infra + C++ + distributed systems → elite tech infra
+#
+# Quality policy:
+#   - Undergrad eligible roles only (PhD/MS-required filtered in scanner.py)
+#   - NA + EU locations only (scanner.py)
+#   - Only companies where the profile is genuinely competitive
+
+companies:
+  # ── Quant / Trading (strongest fit — math olympiad background) ──────────
+  Jane Street: janestreet
+  Citadel: citadel
+  Two Sigma: twosigma
+  HRT: hudsonrivertrading
+  Jump Trading: jumptrading
+  DRW: drweng
+  IMC Trading: imc
+  Optiver: optiver
+  Akuna Capital: akunacapital
+  Five Rings: fiveringsllc
+  Tower Research: towerresearchcapital
+  Point72: point72
+  AQR: aqr
+  DE Shaw: deshaw
+  Virtu Financial: virtu
+  SIG: sigcareers
+
+  # ── AI / Research (Cambridge publication + PyTorch + ML research) ────────
+  Anthropic: anthropic
+  OpenAI: openai
+  Cohere: cohere
+  Weights & Biases: wandb
+  Perplexity: perplexityai
+  Hugging Face: huggingface
+  ElevenLabs: elevenlabs
+  Mistral: mistral
+
+  # ── Elite Tech Infra (Tencent infra, C++, distributed systems) ──────────
+  Stripe: stripe
+  Databricks: databricks
+  Cloudflare: cloudflare
+  Datadog: datadog
+  Vercel: vercel
+  Cockroach Labs: cockroachlabs
+  HashiCorp: hashicorp
+  Confluent: confluent
+  MongoDB: mongodb
+
+  # ── High-growth / YC-adjacent (YC fellowship, founding engineering) ──────
+  Ramp: ramp
+  Brex: brex
+  Rippling: rippling
+  Mercury: mercury
+  Plaid: plaid
+  Anduril: anduril
+  Scale AI: scaleai
+  Notion: notion
+  Linear: linear
+
+  # ── Defense / Deep Tech (C++, systems, high performance) ─────────────────
+  SpaceX: spacex
+  Shield AI: shieldai
+  Palantir: palantir
+
+# ── Role filters — configure what you want to apply to ───────────────────────
+# Edit these to focus the bot on specific role types.
+role_filters:
+  # Which role families to include (comment out any you don't want)
+  families:
+    - quant        # Quant research / trading / algo — strongest fit (USAMO/Putnam)
+    - ml           # ML / AI / research engineer — Cambridge publication fit
+    - fullstack    # SWE / backend / infra — Tencent infra background
+    # - founding   # Founding engineer / 0-to-1 — uncomment to enable
+
+  # Optional: title must contain at least one of these (leave empty = no extra filter)
+  require_title_keywords: []
+
+  # Titles containing ANY of these are skipped (on top of PhD/senior filters)
+  exclude_title_keywords:
+    - "legal"
+    - "privacy"
+    - "hr "
+    - "people team"
+    - "physical security"
+    - "product manager"
+    - "product management"
+    - "finance intern"
+    - "accounting"
+    - "marketing"
+    - "sales"
+    - "recruiting"
+
+# Title filter patterns (case-insensitive)
+intern_pattern: '\b(intern|internship|co-op|co op)\b'
+engineering_keywords:
+  - engineer
+  - developer
+  - software
+  - swe
+  - ml
+  - ai
+  - data
+  - quant
+  - trading
+  - researcher
+  - fullstack
+  - full-stack
+  - full stack
+  - backend
+  - frontend
+  - infrastructure
+  - systems
+  - platform
+  - devops
+  - research
