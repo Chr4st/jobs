@@ -22,6 +22,7 @@ logger = setup_logging("jobbot.greenhouse.apply")
 
 PROOFS_SUBMITTED = Path(__file__).resolve().parents[2] / "proofs" / "submitted"
 PROOFS_NEEDS_HUMAN = Path(__file__).resolve().parents[2] / "proofs" / "needs_human"
+PROOFS_SKIPPED = Path(__file__).resolve().parents[2] / "proofs" / "skipped"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BROWSER_PROFILE_DIR = PROJECT_ROOT / "data" / "browser_profile"
 
@@ -226,6 +227,7 @@ def apply_to_greenhouse(
 
     PROOFS_SUBMITTED.mkdir(parents=True, exist_ok=True)
     PROOFS_NEEDS_HUMAN.mkdir(parents=True, exist_ok=True)
+    PROOFS_SKIPPED.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     file_prefix = safe_filename(f"{company}_{role_title}_{timestamp}")
