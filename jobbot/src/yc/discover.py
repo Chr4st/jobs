@@ -1,12 +1,13 @@
-"""Discover jobs from YC internship pages and find their Greenhouse postings.
+"""Discover jobs from Greenhouse boards for big tech and quant companies.
 
 Approach:
-1. Scrape WAAS (Work at a Startup) for company names and job titles
-2. For each company, check if they have a Greenhouse job board
-3. If yes, extract all matching job URLs from their Greenhouse board
+1. Query Greenhouse JSON API for known company boards
+2. Filter for engineering intern roles
+3. Sort by updated_at to get newest postings first
 """
 
 import re
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -22,24 +23,263 @@ from src.utils.sanitize import (
     sanitize_text,
 )
 
-logger = setup_logging("jobbot.yc.discover")
+logger = setup_logging("jobbot.discover")
 
-# WAAS pages for discovering companies/jobs
+# WAAS pages (legacy, kept for reference)
 WAAS_URLS = [
     "https://www.workatastartup.com/jobs?jobType=internship",
 ]
 
 PAGE_TIMEOUT = 45000
-REQUEST_TIMEOUT = 15
+REQUEST_TIMEOUT = 10
 
 # Common slug transformations: company name -> greenhouse slug
 SLUG_TRANSFORMS = [
-    lambda s: s,                          # as-is
-    lambda s: s.replace(" ", ""),          # no spaces
-    lambda s: s.replace(" ", "-"),         # hyphenated
-    lambda s: s.replace(" ", "").lower(),  # lowered no spaces
-    lambda s: re.sub(r'[^a-z0-9]', '', s.lower()),  # alphanumeric only
+    lambda s: s,
+    lambda s: s.lower(),
+    lambda s: s.replace(" ", ""),
+    lambda s: s.replace(" ", "-"),
+    lambda s: s.replace(" ", "").lower(),
+    lambda s: s.replace(" ", "-").lower(),
+    lambda s: re.sub(r'[^a-z0-9]', '', s.lower()),
+    lambda s: re.sub(r'[^a-z0-9-]', '', s.lower().replace(" ", "-")),
+    lambda s: s.split()[0].lower() if " " in s else s.lower(),
 ]
+
+# ── Big Tech / Quant / AI company → Greenhouse slug ──────────────────────
+BIG_TECH_GREENHOUSE_SLUGS: dict[str, str] = {
+    # Big Tech / Growth
+    "Stripe": "stripe",
+    "Coinbase": "coinbase",
+    "Ramp": "ramp",
+    "Brex": "brex",
+    "Plaid": "plaid",
+    "Robinhood": "robinhood",
+    "Discord": "discord",
+    "Reddit": "reddit",
+    "Pinterest": "pinterestcareers",
+    "Snap": "snap",
+    "Databricks": "databricks",
+    "Snowflake": "snowflakecomputing",
+    "Palantir": "palantir",
+    "Scale AI": "scaleai",
+    "Notion": "notion",
+    "Figma": "figma",
+    "Verkada": "verkada",
+    "Cloudflare": "cloudflare",
+    "Toast": "toast",
+    "Airtable": "airtable",
+    "Cockroach Labs": "cockroachlabs",
+    "HashiCorp": "hashicorp",
+    "Datadog": "datadog",
+    "MongoDB": "mongodb",
+    "Elastic": "elastic",
+    "Confluent": "confluent",
+    "Twilio": "twilio",
+    "Square": "squareup",
+    "Chime": "chime",
+    "Affirm": "affirm",
+    "SoFi": "sofi",
+    "Nuro": "nuro",
+    "Waymo": "waymo",
+    "Aurora": "aaborainnovation",
+    "Anduril": "anduril",
+    "Shield AI": "shieldai",
+    "SpaceX": "spacex",
+    "Rippling": "rippling",
+    "Mercury": "mercury",
+    "Benchling": "benchling",
+    # Quant / Trading
+    "Two Sigma": "twosigma",
+    "Citadel": "citadel",
+    "Jane Street": "janestreet",
+    "DE Shaw": "deshaw",
+    "HRT": "hudsonrivertrading",
+    "Jump Trading": "jumptrading",
+    "DRW": "drweng",
+    "Virtu Financial": "virtu",
+    "IMC Trading": "imc",
+    "Optiver": "optiver",
+    "SIG": "sigcareers",
+    "Akuna Capital": "akunacapital",
+    "Five Rings": "fiveringsllc",
+    "Tower Research": "towerresearchcapital",
+    "Millennium": "millennium",
+    "Point72": "point72",
+    "Bridgewater": "bridgewater",
+    "AQR": "aqr",
+    "Voleon": "voleon",
+    "Headlands Tech": "headlandstech",
+    # AI / ML
+    "OpenAI": "openai",
+    "Anthropic": "anthropic",
+    "Cohere": "cohere",
+    "DeepMind": "deepmind",
+    "Hugging Face": "huggingface",
+    "Weights & Biases": "wandb",
+    "Runway": "runwayml",
+    "Stability AI": "stabilityai",
+    "Character AI": "character",
+    "Perplexity": "perplexityai",
+    "ElevenLabs": "elevenlabs",
+    "Mistral": "mistral",
+    "Adept AI": "adeptailabs",
+}
+
+# Legacy YC slug overrides (kept for backward compat)
+KNOWN_GREENHOUSE_SLUGS: dict[str, str] = {
+    "Hive": "hive",
+    "Verkada": "verkada",
+    "Scale AI": "scaleai",
+    "Scale": "scaleai",
+    "Retool": "retool",
+    "Brex": "brex",
+    "Faire": "faire",
+    "Ramp": "ramp",
+    "Replit": "replit",
+    "Loom": "loom",
+    "Stripe": "stripe",
+    "Airbnb": "airbnb",
+    "Coinbase": "coinbase",
+    "DoorDash": "doordash",
+    "Gusto": "gusto",
+    "Instacart": "instacart",
+    "Flexport": "flexport",
+    "Notion": "notion",
+    "Snorkel AI": "snorkelai",
+    "Weights & Biases": "wandb",
+    "Hugging Face": "huggingface",
+    "Pave": "pave",
+    "Stytch": "stytch",
+    "Ashby": "ashbyhq",
+    "Census": "getcensus",
+    "Rootly": "rootly",
+    "Vanta": "vanta",
+    "Whatnot": "whatnot",
+    "PostHog": "posthog",
+    "Cal.com": "calcom",
+    "Mixpanel": "mixpanel",
+    "Amplitude": "amplitude",
+    "GitLab": "gitlab",
+    "Databricks": "databricks",
+    "Anyscale": "anyscale",
+    "Modal": "modal-labs",
+    "Render": "render",
+    "Railway": "railway",
+    "Supabase": "supabase",
+    "PlanetScale": "planetscale",
+    "Neon": "neondatabase",
+    "Vercel": "vercel",
+    "Temporal": "temporal",
+    "Fly.io": "fly",
+    "Materialize": "materialize",
+    "Cohere": "cohere",
+    "Anthropic": "anthropic",
+    "Deepgram": "deepgram",
+    "AssemblyAI": "assemblyai",
+    "ElevenLabs": "elevenlabs",
+    "Labelbox": "labelbox",
+    "Airbyte": "airbyte",
+    "dbt Labs": "dbtlabsinc",
+    "Fivetran": "fivetran",
+    "Monte Carlo": "montecarlodata",
+    "Hex": "hex",
+    "Observable": "observable",
+    "Sourcegraph": "sourcegraph",
+    "Linear": "linear",
+    "Runway": "runwayml",
+    "Luma AI": "lumalabs",
+    "Stability AI": "stabilityai",
+    "Character.AI": "character",
+    "Perplexity": "perplexityai",
+    "Glean": "glaboratories",
+    "Deel": "deel",
+    "Remote": "remotecom",
+    "Lattice": "lattice",
+    "Rippling": "rippling",
+    "Mercury": "mercury",
+    "Benchling": "benchling",
+}
+
+
+import re
+
+_INTERN_RE = re.compile(r'\b(intern|internship|co-op)\b', re.IGNORECASE)
+_ENG_KW = [
+    "engineer", "developer", "software", "swe", "ml", "ai", "data", "quant",
+    "trading", "fullstack", "full-stack", "full stack", "backend", "frontend",
+    "research", "infrastructure", "platform", "systems", "security",
+    "cloud", "mobile", "applied scientist",
+]
+
+
+def discover_greenhouse_direct(max_jobs: int = 40) -> list[dict]:
+    """Scan big tech / quant Greenhouse boards for engineering intern roles.
+
+    Queries the Greenhouse JSON API for each company in BIG_TECH_GREENHOUSE_SLUGS,
+    filters for intern + engineering roles, and sorts by updated_at (newest first).
+
+    Returns list of dicts:
+        - job_url, company, title, location, updated_at, source_url
+    """
+    found: list[dict] = []
+
+    for company, slug in BIG_TECH_GREENHOUSE_SLUGS.items():
+        api_url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+        try:
+            resp = requests.get(
+                api_url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=REQUEST_TIMEOUT,
+            )
+            if resp.status_code != 200:
+                continue
+            jobs = resp.json().get("jobs", [])
+        except Exception:
+            continue
+
+        for j in jobs:
+            title = j.get("title", "")
+            t_lower = title.lower()
+            is_intern = bool(_INTERN_RE.search(t_lower))
+            is_eng = any(k in t_lower for k in _ENG_KW)
+            if not (is_intern and is_eng):
+                continue
+
+            url = j.get("absolute_url", "")
+            if not url:
+                continue
+
+            location = j.get("location", {}).get("name", "")
+            updated = j.get("updated_at", "")
+
+            found.append({
+                "job_url": url,
+                "company": company,
+                "title": title,
+                "location": location,
+                "updated_at": updated,
+                "description": "",
+                "source_url": f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+            })
+            logger.info(f"  ✓ {company}: {title} [{location}]")
+
+    # Sort by updated_at descending (newest first)
+    def _sort_key(j):
+        try:
+            return datetime.fromisoformat(j["updated_at"].replace("Z", "+00:00"))
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    found.sort(key=_sort_key, reverse=True)
+
+    logger.info(f"=== Found {len(found)} engineering intern roles across {len(BIG_TECH_GREENHOUSE_SLUGS)} companies ===")
+
+    if max_jobs and len(found) > max_jobs:
+        found = found[:max_jobs]
+        logger.info(f"Trimmed to {max_jobs} newest jobs")
+
+    return found
 
 
 def discover_greenhouse_jobs(sources: Optional[list[str]] = None) -> list[dict]:
@@ -198,14 +438,50 @@ def _parse_waas_text(text: str, source_url: str) -> list[dict]:
 
 def _find_greenhouse_jobs(company_name: str) -> list[dict]:
     """Try to find a company's Greenhouse job board and extract job URLs."""
-    jobs = []
+    # Build list of slugs to try: known overrides first, then generated
+    slugs_to_try = []
 
-    # Try different slug formats for the company
+    # Check known overrides first
+    if company_name in KNOWN_GREENHOUSE_SLUGS:
+        slugs_to_try.append(KNOWN_GREENHOUSE_SLUGS[company_name])
+
+    # Add generated slugs
+    seen_slugs = set(slugs_to_try)
     for transform in SLUG_TRANSFORMS:
         slug = transform(company_name)
-        if not slug:
-            continue
+        if slug and slug not in seen_slugs:
+            seen_slugs.add(slug)
+            slugs_to_try.append(slug)
 
+    for slug in slugs_to_try:
+        # Try JSON API first (faster, more reliable)
+        api_url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+        try:
+            resp = requests.get(
+                api_url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=REQUEST_TIMEOUT,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("jobs"):
+                    logger.info(f"Found Greenhouse board for {company_name} via API: {slug} ({len(data['jobs'])} jobs)")
+                    jobs = []
+                    for j in data["jobs"]:
+                        job_url = j.get("absolute_url", "")
+                        title = j.get("title", "")
+                        location = j.get("location", {}).get("name", "")
+                        if job_url and title:
+                            jobs.append({
+                                "job_url": job_url,
+                                "title": title,
+                                "location": location,
+                            })
+                    return jobs
+        except (requests.RequestException, ValueError):
+            pass
+
+        # Fallback: try HTML board
         board_url = f"https://boards.greenhouse.io/{slug}"
         try:
             resp = requests.get(
@@ -215,14 +491,14 @@ def _find_greenhouse_jobs(company_name: str) -> list[dict]:
                 allow_redirects=True,
             )
             if resp.status_code == 200 and "greenhouse" in resp.url.lower():
-                # Found a valid Greenhouse board!
                 logger.info(f"Found Greenhouse board for {company_name}: {board_url}")
                 board_jobs = _parse_greenhouse_board(resp.text, resp.url, company_name)
-                return board_jobs
+                if board_jobs:
+                    return board_jobs
         except requests.RequestException:
             continue
 
-    return jobs
+    return []
 
 
 def _parse_greenhouse_board(html: str, board_url: str, company: str) -> list[dict]:
