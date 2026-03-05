@@ -11,9 +11,9 @@ portfolio: "#"
 location: "Ann Arbor, MI"
 
 # Optional: custom "why this role" snippets per role family
-# If not provided, a generic template is used
+# If not provided, a generic template is used by local model
 why_snippets:
-  founding: "I thrive in early-stage environments where I can wear multiple hats and ship rapidly."
-  fullstack: "I enjoy building end-to-end features across the stack with a focus on user experience."
-  ml: "I'm passionate about applying ML/AI to real-world problems with production-grade systems."
-  quant: "I combine strong mathematical foundations with software engineering to build trading systems."
+  founding: "#"
+  fullstack: "#"
+  ml: "#"
+  quant: "#"
